@@ -6,3 +6,10 @@ DataPreparation includes programs to prepare the Gaia DR2 source files (in csv.g
 gaialib2 contains the actual query program. Use Makefile to compile and create the executable program.
 
 Note that I have not included the HAT and 2MASS ID query feature that was originally included in this program because the binary files are too large to include here.
+
+-Jason Kim jjk7@princeton.edu
+-USRP 2018
+-Princeton University
+
+
+Special Thanks to Joel Hartman and Princeton Astrophysics
