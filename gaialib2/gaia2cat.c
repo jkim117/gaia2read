@@ -8,7 +8,7 @@
 #include "sllist.h"
 #include "gaia2cat.h"
 #include "gaia2ret.h"
-#include "utils.h"                                                                                                                                                                                                                            
+#include "utils.h"
 
 char catpath_Gaia2[MAX_LINE] = { '\0' };
 char catpath_Gaia2Bin[MAX_LINE] = { '\0' };
@@ -76,7 +76,6 @@ void gaia2_getpath()
         free( line );
         fclose( rc );
     }
-    
     return;
 }
 
@@ -104,7 +103,7 @@ int recursiveSearch(FILE *zFile, int rzIndex1, int rzIndex2, double ra,bool mino
   fseek(zFile,raMiddleIndex,SEEK_SET);
   double raMiddle;
   fread((void*)(&raMiddle),sizeof(double),1,zFile);
-  
+
   if (raMiddle<ra)
     {
       fseek(zFile,raMiddleIndex+STARSIZE,SEEK_SET);
@@ -135,11 +134,10 @@ int recursiveSearch(FILE *zFile, int rzIndex1, int rzIndex2, double ra,bool mino
     }
   else
     return rzIndex1+(middleStar)*STARSIZE;
-  
 }
 
 // Binary Search method for finding star in ra and dec range
-int binarySearch(FILE *zFile, int raZone, double ra, bool minormax)//true for min false for max                                                                                                                                                                                
+int binarySearch(FILE *zFile, int raZone, double ra, bool minormax)//true for min false for max
 {
   fseek(zFile,4*raZone,SEEK_SET);
   int rzIndex2;
@@ -155,7 +153,7 @@ int binarySearch(FILE *zFile, int raZone, double ra, bool minormax)//true for mi
       fread((void*)(&rzIndex1),sizeof(int),1,zFile);
       rzIndex1=rzIndex1*STARSIZE+4*1440;
     }
-  //rzIndex1 is the index for the start of this zone. rzIndex2 is the index for the start of the next zone                                                                                                                                                                      
+  //rzIndex1 is the index for the start of this zone. rzIndex2 is the index for the start of the next zone
   int nStars = (rzIndex2-rzIndex1)/STARSIZE;
 
   int middleStar = nStars/2;
@@ -205,8 +203,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
 
   bool noRA0 = raMax > raMin;
 
-  //dec zones go from 1 to 900                                                                                                                                                                                                                                                 
-                                                                                                                                                                                                                                                                                
+  //dec zones go from 1 to 900
   double dMinPos = decMin + 90.0;
   double dMaxPos = decMax + 90.0;
   int dMinZone = (int)(dMinPos/0.2)+1;
@@ -216,8 +213,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
   if (dMaxPos==180.0)
     dMaxZone=900;
 
-  //ra zones go from 0 to 1439                                                                                                                                                                                                                                                 
-                                                                                                                                                                                                                                                                                
+  //ra zones go from 0 to 1439
   int rMinZone = (int)((raMin)/0.25);
   if(raMin == 360.0)
     rMinZone = 1439;
@@ -243,23 +239,20 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
 
       if(noRA0)
         {
-          //for the minimum ra:                                                                                                                                                                                                                                                
-                                                                                                                                                                                                                                                                                
+          //for the minimum ra:
           int minIndex = binarySearch(zFile,rMinZone,raMin,true);
 
-          //for the max ra:                                                                                                                                                                                                                                                   
-                                                                                                                                                                                                                                                                                
+          //for the max ra:
           int maxIndex = binarySearch(zFile,rMaxZone,raMax,false);
 
-          // during the initial run for gaia2writebin.c, there was a point where the program failed and stopped. Because of the vast size of the Gaia DR2,                                                                                                                      
-          // I decided not to start the run from scratch, but continued where the initial run left off. However, because of this, there may be a few duplicates                                                                                                                 
-          // of stars within my sortedBin files. Thus, I include a small check here to eliminate such duplicates.                                                                                                                                                               
-          long id = 0; //test for duplicates by comparing adjacent ids.                                                                                                                                                                                                         
+          // during the initial run for gaia2writebin.c, there was a point where the program failed and stopped. Because of the vast size of the Gaia DR2,
+          // I decided not to start the run from scratch, but continued where the initial run left off. However, because of this, there may be a few duplicates
+          // of stars within my sortedBin files. Thus, I include a small check here to eliminate such duplicates.
+          long id = 0; //test for duplicates by comparing adjacent ids.
 
 	  for (int i = minIndex; i < maxIndex; i+=STARSIZE)
             {
-              //read and store each of the stars, checking dec each time. Add the stars to a list                                                                                                                                                                              
-                                                                                                                                                                                                                                                                                
+              //read and store each of the stars, checking dec each time. Add the stars to a list
               fseek(zFile, i+32, SEEK_SET);
               double starDec;
               fread((void*)(&starDec), sizeof(double),1, zFile);
@@ -269,7 +262,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
               gaiastar newStar;
               fread((void*)(&newStar),sizeof(gaiastar),1,zFile);
 
-              if (newStar.source_id==id) // testing for duplicates                                                                                                                                                                                                              
+              if (newStar.source_id==id) // testing for duplicates
                 continue;
               id = newStar.source_id;
 
@@ -280,15 +273,13 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
       else
         {
           long id = 0;
-          //part 1: east                                                                                                                                                                                                                                                       
-                                                                                                                                                                                                                                                                                
+          //part 1: east
           int minIndex = binarySearch(zFile,0,0.0,true);
           int maxIndex = binarySearch(zFile,rMaxZone,raMax,false);
 
           for (int i = minIndex; i < maxIndex; i+=STARSIZE)
             {
-              //read and store each of the stars, checking dec each time. Add the stars to a list                                                                                                                                                                               
-                                                                                                                                                                                                                                                                               
+              //read and store each of the stars, checking dec each time. Add the stars to a list
 
               fseek(zFile, i+32, SEEK_SET);
               double starDec;
@@ -299,7 +290,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
               gaiastar newStar;
               fread((void*)(&newStar),sizeof(gaiastar),1,zFile);
 
-              if (newStar.source_id==id)// testing for duplicates                                                                                                                                                                                                               
+              if (newStar.source_id==id)// testing for duplicates
                 continue;
               id = newStar.source_id;
 
@@ -309,14 +300,13 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
 
 	  id = 0;
 
-	  //part 2: west                                                                                                                                                                                                                                                       
-                                                                                                                                                                                                                                                                                
+	  //part 2: west
 	  minIndex = binarySearch(zFile,rMinZone,raMin,true);
 	  maxIndex = binarySearch(zFile,1439,360.0,false);
 
           for (int i = minIndex; i < maxIndex; i+=STARSIZE)
             {
-              //read and store each of the stars, checking dec each time. Add the stars to a list                                                                                                                                                                               
+              //read and store each of the stars, checking dec each time. Add the stars to a list
 
               fseek(zFile, i+32, SEEK_SET);
               double starDec;
@@ -327,7 +317,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
               gaiastar newStar;
               fread((void*)(&newStar),sizeof(gaiastar),1,zFile);
 
-              if (newStar.source_id==id)// testing for duplicates                                                                                                                                                                                                               
+              if (newStar.source_id==id)// testing for duplicates
                 continue;
               id = newStar.source_id;
 
@@ -350,8 +340,8 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
   int count = 0;
 
   bool noRA0 = raMax > raMin;
-  
-  //dec zones go from 1 to 900                                                                                                                                                                                                                                                  
+
+  //dec zones go from 1 to 900
   double dMinPos = decMin + 90.0;
   double dMaxPos = decMax + 90.0;
   int dMinZone = (int)(dMinPos/0.2)+1;
@@ -361,7 +351,7 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
   if (dMaxPos==180.0)
     dMaxZone=900;
 
-  //ra zones go from 0 to 1439                                                                                                                                                                                                                                                  
+  //ra zones go from 0 to 1439
   int rMinZone = (int)((raMin)/0.25);
   if(raMin == 360.0)
     rMinZone = 1439;
@@ -387,10 +377,10 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
 
         if(noRA0)
         {
-          //for the minimum ra:                                                                                                                                                                                                                                                 
+          //for the minimum ra:
           int minIndex = binarySearch(zFile,rMinZone,raMin,true);
 
-          //for the max ra:                                                                                                                                                                                                                                                     
+          //for the max ra:
           int maxIndex = binarySearch(zFile,rMaxZone,raMax,false);
 
           // during the initial run for gaia2writebin.c, there was a point where the program failed and stopped. Because of the vast size of the Gaia DR2,
@@ -400,7 +390,7 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
 
            for (int i = minIndex; i < maxIndex; i+=STARSIZE)
             {
-              //read and store each of the stars, checking dec each time. Add the stars to a list                                                                                                                                                                               
+              //read and store each of the stars, checking dec each time. Add the stars to a list
               fseek(zFile, i+32, SEEK_SET);
               double starDec;
               fread((void*)(&starDec), sizeof(double),1, zFile);
@@ -424,14 +414,13 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
          else
         {
 	  long id = 0;
-          //part 1: east                                                                                                                                                                                                                                                        
+          //part 1: east
 	  int minIndex = binarySearch(zFile,0,0.0,true);
           int maxIndex = binarySearch(zFile,rMaxZone,raMax,false);
-	 
+
 	  for (int i = minIndex; i < maxIndex; i+=STARSIZE)
             {
-              //read and store each of the stars, checking dec each time. Add the stars to a list                                                                                                              
-                                                                                                                                                                                                                                                                                
+              //read and store each of the stars, checking dec each time. Add the stars to a list
               fseek(zFile, i+32, SEEK_SET);
               double starDec;
               fread((void*)(&starDec), sizeof(double),1, zFile);
@@ -453,10 +442,10 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
 		}
 
             id = 0;
-          //part 2: west                                                                                                                                                                                                                                                        
+          //part 2: west
 	     minIndex = binarySearch(zFile,rMinZone,raMin,true);
 	     maxIndex = binarySearch(zFile,1439,360.0,false);
-	   
+
 	  for (int i = minIndex; i < maxIndex; i+=STARSIZE)
             {
               //read and store each of the stars, checking dec each time. Add the stars to a list
