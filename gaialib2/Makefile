@@ -15,7 +15,7 @@ BINDIR          = ../../bin
 CC              = gcc
 MAKE            = make
 
-CFLAGS   = -W -Wall -ansi -pedantic -std=c99 -g
+CFLAGS   = -W -Wall -pedantic -std=c99 -g
 
 ###############################################################################
 
