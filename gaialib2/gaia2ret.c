@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "astromath.h"
 #include "mmath.h"
@@ -21,7 +22,8 @@ gaiastar getStarfromID(long gaiaID, const double *epoch);
 extern char catpath_Gaia2Bin[MAX_LINE];
 extern char catpath_Gaia2Mass[MAX_LINE];
 
-int starPosCount(double ra, double dec, bool circle, double frame_size,const double *epoch)
+int starPosCount(double ra, double dec, bool circle, double frame_size,const double *epoch,
+        const maglims* maglim)
 {
   if (!circle)
     frame_size = frame_size/2;
@@ -35,45 +37,45 @@ int starPosCount(double ra, double dec, bool circle, double frame_size,const dou
     double pm_corr = 0;
     if ( epoch ) {
       double tdiff = abs(*epoch - 2015.5);
-      // add another 0.1 mas/yr to PM to avoid any rounding errors                                                                                                                                                                                                        
+      // add another 0.1 mas/yr to PM to avoid any rounding errors
       pm_corr = 0.1 * ( 40000 + 1 ) * tdiff;
       pm_corr = MAS2DEG( pm_corr );
     }
 
-    // calculate corner coordinates                                                                                                                                                                                                                                         
+    // calculate corner coordinates
     double search_size = frame_size+pm_corr;
 
-    double ra_ll, dec_ll;     // lower left                                                                                                                                                                                                                                 
+    double ra_ll, dec_ll;     // lower left
     astr_rignomonic(
 		    -search_size, -search_size, ra, dec, &ra_ll, &dec_ll
 		    );
 
-    double ra_ul, dec_ul;     // upper left                                                                                                                                                                                                                                 
+    double ra_ul, dec_ul;     // upper left
     astr_rignomonic(
 		    -search_size, search_size, ra, dec, &ra_ul, &dec_ul
 		    );
 
-    double ra_lr, dec_lr;     // lower right                                                                                                                                                                                                                                
+    double ra_lr, dec_lr;     // lower right
     astr_rignomonic(
 		    search_size, -search_size, ra, dec, &ra_lr, &dec_lr
 		    );
 
-    double ra_ur, dec_ur;     // upper right                                                                                                                                                                                                                                
+    double ra_ur, dec_ur;     // upper right
     astr_rignomonic(
 		    search_size, search_size, ra, dec, &ra_ur, &dec_ur
 		    );
 
-    double ra_lm, dec_lm;     // lower middle                                                                                                                                                                                                                               
+    double ra_lm, dec_lm;     // lower middle
     astr_rignomonic(
 		    0, -search_size, ra, dec, &ra_lm, &dec_lm
 		    );
 
-    double ra_um, dec_um;     // upper middle                                                                                                                                                                                                                               
+    double ra_um, dec_um;     // upper middle
     astr_rignomonic(
 		    0, search_size, ra, dec, &ra_um, &dec_um
 		    );
 
-    // get min/max declinations                                                                                                                                                                                                                                             
+    // get min/max declinations
     dec_min = MIN( dec_ul, dec_um );
     dec_min = MIN( dec_min, dec_ll );
     dec_min = MIN( dec_min, dec_lm );
@@ -82,11 +84,11 @@ int starPosCount(double ra, double dec, bool circle, double frame_size,const dou
     dec_max = MAX( dec_max, dec_um );
     dec_max = MAX( dec_max, dec_ul );
 
-    // get min/max RA                                                                                                                                                                                                                                                       
+    // get min/max RA
     ra_min = MIN( ra_ul, ra_ll );
     ra_max = MAX( ra_ur, ra_lr );
 
-    // check if pole is in the frame                                                                                                                                                                                                                                        
+    // check if pole is in the frame
     if ( dec - search_size <= -90.0 ) {
       dec_min = -90.0;
       ra_min = 0.0;
@@ -99,7 +101,7 @@ int starPosCount(double ra, double dec, bool circle, double frame_size,const dou
     }
   }
   else {
-    // full sky                                                                                                                                                                                                                                                             
+    // full sky
     ra_min = 0;
     ra_max = 360;
     dec_min = -90;
@@ -107,13 +109,16 @@ int starPosCount(double ra, double dec, bool circle, double frame_size,const dou
   }
 
   if (circle)
-    return posCount(ra_min,ra_max,dec_min,dec_max,test_starcirc, ra, dec, frame_size, epoch);
+    return posCount(ra_min,ra_max,dec_min,dec_max,test_starcirc, ra, dec, frame_size, epoch,
+            maglim);
   else
-    return posCount(ra_min,ra_max,dec_min,dec_max,test_star, ra, dec, frame_size, epoch);
+    return posCount(ra_min,ra_max,dec_min,dec_max,test_star, ra, dec, frame_size, epoch,
+            maglim);
 
 }
 // returns list of stars given size, circle or rectangular, and center ra and dec
-int starPosSearch(double ra, double dec, bool circle, double frame_size, const double *epoch,gaiastar* stars)
+int starPosSearch(double ra, double dec, bool circle, double frame_size, const double *epoch,
+        const maglims* maglim, gaiastar* stars)
 {
     if (!circle)
         frame_size = frame_size/2;
@@ -199,9 +204,11 @@ int starPosSearch(double ra, double dec, bool circle, double frame_size, const d
     }
 
     if (circle)
-      return posQuery(ra_min,ra_max,dec_min,dec_max,test_starcirc, ra, dec, frame_size, epoch,stars);
+      return posQuery(ra_min,ra_max,dec_min,dec_max,test_starcirc, ra, dec, frame_size, epoch,
+              maglim, stars);
     else
-      return posQuery(ra_min,ra_max,dec_min,dec_max,test_star, ra, dec, frame_size, epoch,stars);
+      return posQuery(ra_min,ra_max,dec_min,dec_max,test_star, ra, dec, frame_size, epoch,
+              maglim, stars);
 }
 
 long recurseNewID(long start, long end, long ID, FILE *idFile, IDType intype, IDType outtype);
@@ -220,11 +227,11 @@ sllist* starListToIDs(gaiastar stars[], IDType outID, int count)
   for (int i = 0; i < count; i++) {
     const gaiastar* star = &stars[i];
     long gaiaID = star->source_id;
-         
+
     long other = recurseNewID(0,450646602,gaiaID,gaiaFile,GAIA,outID);
 
     slappend(&idList,&other,sizeof(long));
-    
+
   }
   free(gaiaFileName);
   fclose(gaiaFile);
@@ -273,7 +280,7 @@ long recurseNewID(long start, long end, long ID, FILE *idFile, IDType intype, ID
   while(start <= end)
     {
       long mid = (end-start)/2+start;
-        
+
       long fileID;
       if (intype==GAIA)
         {
@@ -323,7 +330,7 @@ long recurseNewID(long start, long end, long ID, FILE *idFile, IDType intype, ID
     }
 
     return 0;
-    
+
 }
 
 
@@ -477,18 +484,41 @@ IDElement recurseID(long start, long end, long gaiaID, FILE *idFile)
     null.position = 0;
     null.zone = 0;
 	return null;
-	
+
 }
 
 // checks to make sure star is within box and applies proper motion
-bool test_star(gaiastar* star, double centRA, double centDec, double half_size, const double *epoch)
+bool test_star(gaiastar* star, double centRA, double centDec, double half_size, const double *epoch,
+        const maglims* maglim)
 {
-  // apply pm                                                                                                                                                                                                                                                                 
+  // check magnitude limits
+  if ( maglim ) {
+    if ( maglim->minGmag && star->phot_g_mean_mag < *maglim->minGmag)
+        return false;
+    if ( maglim->maxGmag && star->phot_g_mean_mag > *maglim->maxGmag)
+        return false;
+    // Not all Gaia stars have RP and BP magnitudes in GaiaDR2, so check for this
+    // n/a values were stored as 3.55: see DataPreparation/gaia2writebin.c
+    if (maglim -> minBpmag && fabs(3.55 - star->phot_bp_mean_mag)<1e-7
+            && star->phot_bp_mean_mag < *maglim->minBpmag)
+        return false;
+    if (maglim -> maxBpmag && fabs(3.55 - star->phot_bp_mean_mag)<1e-7
+            && star->phot_bp_mean_mag > *maglim->maxBpmag)
+        return false;
+    if (maglim -> minRpmag && fabs(3.55 - star->phot_rp_mean_mag)<1e-7
+            && star->phot_rp_mean_mag < *maglim->minRpmag)
+        return false;
+    if (maglim -> maxRpmag && fabs(3.55 - star->phot_rp_mean_mag)<1e-7
+            && star->phot_rp_mean_mag > *maglim->maxRpmag)
+        return false;
+  }
+
+  // apply pm
   if ( epoch ) {
     const double tdiff = ( *epoch - 2015.5 );
       pmotion_apply( &star->ra, &star->dec,star->pmra, star->pmdec, tdiff );
   }
-   
+
     if ( half_size > 0 ) {
         real xi, eta;
         astr_rgnomonic(
@@ -505,14 +535,22 @@ bool test_star(gaiastar* star, double centRA, double centDec, double half_size, 
             return false;
         }
     }
-   
+
     return true;
 }
 
 // tests star to make sure it is within the circle and then applies proper motion
-bool test_starcirc(gaiastar* star,double centRA,double centDec,double radius, const double *epoch)
+bool test_starcirc(gaiastar* star,double centRA,double centDec,double radius, const double *epoch,
+        const maglims* maglim)
 {
-  // apply pm                                                                                                                                                                                                                                                                 
+  // check magnitude limits
+  if ( maglim ) {
+    if ( maglim->minGmag && star->phot_g_mean_mag < *maglim->minGmag)
+        return false;
+    if ( maglim->maxGmag && star->phot_g_mean_mag > *maglim->maxGmag)
+        return false;
+  }
+  // apply pm
   if ( epoch ) {
     const double tdiff = ( *epoch - 2015.5 );
       pmotion_apply( &star->ra, &star->dec,star->pmra, star->pmdec, tdiff );
@@ -536,7 +574,7 @@ bool test_starcirc(gaiastar* star,double centRA,double centDec,double radius, co
     if ( mdist2( xi, eta ) > radius * radius ) {
         return false;
     }
-  
+
     return true;
 }
 

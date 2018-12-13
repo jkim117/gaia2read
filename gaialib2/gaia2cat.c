@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <string.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -197,7 +199,8 @@ int binarySearch(FILE *zFile, int raZone, double ra, bool minormax)//true for mi
   return rzIndex1+(middleStar)*STARSIZE;
 }
 
-int posCount(double raMin, double raMax, double decMin, double decMax, testfunc tester,double ra,double dec, double frame_size, const double *epoch)
+int posCount(double raMin, double raMax, double decMin, double decMax, testfunc tester,double ra,double dec, double frame_size,
+        const double *epoch, const maglims* maglim)
 {
   int count = 0;
 
@@ -266,9 +269,9 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
                 continue;
               id = newStar.source_id;
 
-              if((*tester)(&newStar,ra,dec,frame_size, epoch))
-		count++;
-	    }
+              if((*tester)(&newStar,ra,dec,frame_size, epoch, maglim))
+                count++;
+            }
         }
       else
         {
@@ -294,7 +297,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
                 continue;
               id = newStar.source_id;
 
-              if((*tester)(&newStar,ra,dec,frame_size, epoch))
+              if((*tester)(&newStar,ra,dec,frame_size, epoch, maglim))
 		count++;
 	    }
 
@@ -321,7 +324,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
                 continue;
               id = newStar.source_id;
 
-              if((*tester)(&newStar,ra,dec,frame_size, epoch))
+              if((*tester)(&newStar,ra,dec,frame_size, epoch, maglim))
 		count++;
 	    }
 	}
@@ -331,11 +334,13 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
 
     }
   free(catpath);
+  printf("%d stars found\n", count);
   return count;
 
 }
 // returns list of stars based on ra and dec range
-int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc tester,double ra,double dec, double frame_size, const double *epoch,gaiastar stars[])
+int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc tester,double ra,double dec, double frame_size,
+        const double *epoch, const maglims* maglim, gaiastar stars[])
 {
   int count = 0;
 
@@ -404,7 +409,7 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
                 continue;
               id = newStar.source_id;
 
-              if((*tester)(&newStar,ra,dec,frame_size, epoch))
+              if((*tester)(&newStar,ra,dec,frame_size, epoch, maglim))
 		{
 		stars[count]=newStar;
 		count++;
@@ -434,7 +439,7 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
                 continue;
               id = newStar.source_id;
 
-              if((*tester)(&newStar,ra,dec,frame_size, epoch))
+              if((*tester)(&newStar,ra,dec,frame_size, epoch, maglim))
 		{
 		stars[count]=newStar;
 		count++;
@@ -463,7 +468,7 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
                 continue;
               id = newStar.source_id;
 
-              if((*tester)(&newStar,ra,dec,frame_size, epoch))
+              if((*tester)(&newStar,ra,dec,frame_size, epoch, maglim))
 		{
 		stars[count]=newStar;
 		count++;

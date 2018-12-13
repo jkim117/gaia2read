@@ -39,6 +39,10 @@ enum {
     arg_idfile,
     arg_precess,
     arg_pm,
+    arg_rmin,
+    arg_rmax,
+    arg_bmin,
+    arg_bmax,
     arg_cmdline
 };
 
@@ -60,6 +64,12 @@ myoptlong longoptions[] =
     { "idfile",         required_argument,  arg_idfile  },
     { "precess",        required_argument,  arg_precess },
     { "pm",             optional_argument,  arg_pm      },
+    { "mG",             optional_argument,  'm'         },
+    { "MG",             optional_argument,  'M'         },
+    { "mR",             optional_argument,  arg_rmin    },
+    { "MR",             optional_argument,  arg_rmax    },
+    { "mB",             optional_argument,  arg_bmin    },
+    { "MB",             optional_argument,  arg_bmax    },
     { "cmdline",        no_argument,        arg_cmdline },
     { "out",            required_argument,  'o'         },
     { "version",        no_argument,        'v'         },
@@ -68,7 +78,7 @@ myoptlong longoptions[] =
 };
 
 // local functions
-static int     add_star_to_list( sllist** ids, const char* id, bool isfile, IDType inputIDType);
+static int      add_star_to_list( sllist** ids, const char* id, bool isfile, IDType inputIDType);
 static void     usage();
 static void     help();
 static void     version();
@@ -80,7 +90,7 @@ int main(int argc, char** argv)
 	skypos center;
     bool cent_ra_set        = false;
     bool cent_dec_set       = false;
-    double size               = 0;
+    double size             = 0;
     bool is_circular        = false;
     const char* outfile     = NULL;
     sllist* ids             = NULL;
@@ -89,21 +99,26 @@ int main(int argc, char** argv)
     IDType inputIDType      = GAIA;
     IDType specify_idOut    = GAIA;
     bool equinox            = false;
-    double JDequinox          = 0;
+    double JDequinox        = 0;
     bool epoch              = false;
-    double JD                 = 0;
+    double JD               = 0;
     bool print_cmdline      = false;
-    const char* gID               = NULL;
-    const char* idFile            = NULL;
+    const char* gID         = NULL;
+    const char* idFile      = NULL;
     int idcount = 0;//number of id stars added to list
     int opt;
+    bool set_maglim         = false;
+    maglims maglim          = {
+        NULL, NULL, NULL, NULL, NULL, NULL
+    };
+
 
     if(argc == 1) {
       usage();
       exit(0);
     }
 
-    while ((opt = mygetopt(argc, argv, "r:d:p:s:cg:o:vh", longoptions)) != NO_MORE_OPTIONS)
+    while ((opt = mygetopt(argc, argv, "r:d:p:s:cg:o:m:M:vh", longoptions)) != NO_MORE_OPTIONS)
     {
         switch(opt)
         {
@@ -162,9 +177,9 @@ int main(int argc, char** argv)
                 gID = myoptarg;
 	            break;
 
-                case arg_catpath:   // --cat, --catalog
-            		gaia2_setpath( myoptarg );
-            		break;
+            case arg_catpath:   // --cat, --catalog
+                gaia2_setpath( myoptarg );
+                break;
 
 	        case arg_idtype:    // --what type of ids are the input
                 if ( !astrio_parseID(myoptarg, &inputIDType, NULL))
@@ -213,6 +228,109 @@ int main(int argc, char** argv)
 	                }
 	            }
 	            break;
+
+            case 'm':           // --mG
+                {
+                    if ( !myoptarg ) {
+                        err_print_msg("error with magnitude", myoptarg);
+                    }
+                    else {
+                        double Gmin = strtof(myoptarg, NULL);
+                        if (Gmin <= 0.0)
+                            err_print_msg("invalid G mag bright cutoff", myoptarg);
+                        else {
+                            maglim.minGmag = &Gmin;
+                            set_maglim = true;
+                        }
+                    }
+                }
+                break;
+
+            case 'M':           // --MG
+                {
+                    if ( !myoptarg ) {
+                        err_print_msg("error with magnitude", myoptarg);
+                    }
+                    else {
+                        double Gmax = strtof(myoptarg, NULL);
+                        if (Gmax <= 0.0)
+                            err_print_msg("invalid G mag faint cutoff", myoptarg);
+                        else {
+                            maglim.maxGmag = &Gmax;
+                            set_maglim = true;
+                        }
+                    }
+                }
+                break;
+
+            case arg_rmin:           // --mR
+                {
+                    if ( !myoptarg ) {
+                        err_print_msg("error with magnitude", myoptarg);
+                    }
+                    else {
+                        double Rmin = strtof(myoptarg, NULL);
+                        if (Rmin <= 0.0)
+                            err_print_msg("invalid RP mag bright cutoff", myoptarg);
+                        else {
+                            maglim.minRpmag = &Rmin;
+                            set_maglim = true;
+                        }
+                    }
+                }
+                break;
+
+            case arg_rmax:           // --MR
+                {
+                    if ( !myoptarg ) {
+                        err_print_msg("error with magnitude", myoptarg);
+                    }
+                    else {
+                        double Rmax = strtof(myoptarg, NULL);
+                        if (Rmax <= 0.0)
+                            err_print_msg("invalid RP mag faint cutoff", myoptarg);
+                        else {
+                            maglim.maxRpmag = &Rmax;
+                            set_maglim = true;
+                        }
+                    }
+                }
+                break;
+
+            case arg_bmin:           // --mB
+                {
+                    if ( !myoptarg ) {
+                        err_print_msg("error with magnitude", myoptarg);
+                    }
+                    else {
+                        double Bmin = strtof(myoptarg, NULL);
+                        if (Bmin <= 0.0)
+                            err_print_msg("invalid BP mag bright cutoff", myoptarg);
+                        else {
+                            maglim.minBpmag = &Bmin;
+                            set_maglim = true;
+                        }
+                    }
+                }
+                break;
+
+            case arg_bmax:           // --MB
+                {
+                    printf("BP mag max = %.2f\n", strtof(myoptarg, NULL));
+                    if ( !myoptarg ) {
+                        err_print_msg("error with magnitude", myoptarg);
+                    }
+                    else {
+                        double Bmax = strtof(myoptarg, NULL);
+                        if (Bmax <= 0.0)
+                            err_print_msg("invalid BP mag faint cutoff", myoptarg);
+                        else {
+                            maglim.maxBpmag = &Bmax;
+                            set_maglim = true;
+                        }
+                    }
+                }
+                break;
 
 	        case arg_cmdline:   // --cmdline
 	            print_cmdline = true;
@@ -295,28 +413,29 @@ int main(int argc, char** argv)
 
     //*********************Initializing stars list*********************
     FILE* os = NULL;
+    const double* pJD = epoch ? &JD : NULL;
+    const maglims* pmaglim = set_maglim ? &maglim : NULL;
 
     if ( cent_ra_set ) {
-      const double* pJD = epoch ? &JD : NULL;
       int count;
       if ( !is_circular ) {
-	// read square count                                                                                                                                                                                                                   
-	count = starPosCount(center.RA, center.Dec, false, size, pJD);
+	// read square count
+	count = starPosCount(center.RA, center.Dec, false, size, pJD, pmaglim);
       }
       else {
-	// read circle count                                                                                                                                                                                                                 
-	count = starPosCount(center.RA, center.Dec, true, size, pJD);
+	// read circle count
+	count = starPosCount(center.RA, center.Dec, true, size, pJD, pmaglim);
       }
       gaiastar *stars;
       stars=malloc(count*sizeof(gaiastar));
 
         if ( !is_circular ) {
             // read square
-	  starPosSearch(center.RA, center.Dec, false, size, pJD,stars);
+	  starPosSearch(center.RA, center.Dec, false, size, pJD, pmaglim, stars);
         }
         else {
             // read circle
-	  starPosSearch(center.RA, center.Dec, true, size, pJD,stars);
+	  starPosSearch(center.RA, center.Dec, true, size, pJD, pmaglim, stars);
         }
 
         if (count==0 ) {
@@ -358,7 +477,6 @@ int main(int argc, char** argv)
 
     }
     else {
-        const double* pJD = epoch ? &JD : NULL;
         // get stars based on their IDs
         gaiastar *stars;
 	stars = malloc(idcount*sizeof(gaiastar));
@@ -561,6 +679,10 @@ void usage()
 " --idfile <path>       : read IDs (see option -g) from file",
 " --precess <equinox>   : apply correction for precession for a given equinox",
 " --pm <epoch>          : apply correction for proper motions. Epoch is in years",
+" --mG|-m <G_min>       : bright G magnitude cutoff",
+" --MG|-M <G_max>       : faint G magnitude cutoff",
+" --mf <f_min>          : minimum magnitude in band f, where f is 'G', 'R', or 'B'",
+" --Mf <f_max>          : maximum magnitude in band f, where f is 'G', 'R', or 'B'",
 " --out|-o <file>       : output file",
 " --cmdline             : prints command line first",
 " --version|-v          : prints out version",
