@@ -18,6 +18,9 @@
 IDElement recurseID(long start, long end, long gaiaID, FILE *idFile);
 gaiastar getStarfromID(long gaiaID, const double *epoch);
 
+extern char catpath_Gaia2Bin[MAX_LINE];
+extern char catpath_Gaia2Mass[MAX_LINE];
+
 int starPosCount(double ra, double dec, bool circle, double frame_size,const double *epoch)
 {
   if (!circle)
@@ -206,18 +209,25 @@ long recurseNewID(long start, long end, long ID, FILE *idFile, IDType intype, ID
 sllist* starListToIDs(gaiastar stars[], IDType outID, int count)
 {
   sllist *idList = NULL;
+  if(count <= 0) return idList;
+  char *gaiaFileName = concat(catpath_Gaia2Mass,"IDgaiaSort");
+  //FILE* gaiaFile = fopen("/home/jkim/work/Gaia2Mass/IDgaiaSort","rb");
+  FILE* gaiaFile = fopen(gaiaFileName,"rb");
+  if (gaiaFile==NULL) {
+    printf("ERROR: could not open file %s\n", gaiaFileName);
+    exit(EXIT_FAILURE);
+  }
   for (int i = 0; i < count; i++) {
     const gaiastar* star = &stars[i];
     long gaiaID = star->source_id;
          
-    FILE* gaiaFile = fopen("/home/jkim/work/Gaia2Mass/IDgaiaSort","rb");
-    if (gaiaFile==NULL)
-      printf("ERROR: file could not open");
     long other = recurseNewID(0,450646602,gaiaID,gaiaFile,GAIA,outID);
 
     slappend(&idList,&other,sizeof(long));
     
-    }
+  }
+  free(gaiaFileName);
+  fclose(gaiaFile);
   return idList;
 
 }
@@ -228,15 +238,23 @@ char* toGaiaID(const char* otherID, IDType inID, char* buffer)
   if (inID==GAIA)
     return (char*)otherID;
   FILE *sortedFile;
+  char *sortedFileName = NULL;
   if (inID==TMASS)
-    sortedFile = fopen("/home/jkim/work/Gaia2Mass/IDtmassSort","rb");
+    sortedFileName = concat(catpath_Gaia2Mass,"IDtmassSort");
   else
-    sortedFile = fopen("/home/jkim/work/Gaia2Mass/IDhatSort","rb");
-  if(sortedFile==NULL)
-    printf("ERROR: could not open file");
+    sortedFileName = concat(catpath_Gaia2Mass,"IDhatSort");
+  //sortedFile = fopen("/home/jkim/work/Gaia2Mass/IDtmassSort","rb");
+  //sortedFile = fopen("/home/jkim/work/Gaia2Mass/IDhatSort","rb");
+  sortedFile = fopen(sortedFileName,"rb");
+  if(sortedFile==NULL) {
+    printf("ERROR: could not open file %s\n",sortedFileName);
+    exit(EXIT_FAILURE);
+  }
   long other = strtol(otherID,NULL,10);
   long gaiaID = recurseNewID(0,450646602,other,sortedFile,inID,GAIA);
   fclose(sortedFile);
+  if(sortedFileName != NULL)
+    free(sortedFileName);
   sprintf(buffer,"%ld",gaiaID);
   return buffer;
 }
@@ -337,54 +355,64 @@ gaiastar getStarfromID(long gaiaID, const double *epoch)
 	int numStars;
 	if (stringID[0]=='1')
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id1";
-		numStars = 116724371;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id1");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id1";
+	  numStars = 116724371;
 	}
 	else if (stringID[0]=='2')
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id2";
-		numStars = 163285128;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id2");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id2";
+	  numStars = 163285128;
 	}
 	else if (stringID[0]=='3')
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id3";
-		numStars = 87098579;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id3");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id3";
+	  numStars = 87098579;
 	}
 	else if (stringID[0]=='4')
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id4";
-		numStars = 585793870;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id4");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id4";
+	  numStars = 585793870;
 	}
 	else if (stringID[0]=='5')
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id5";
-		numStars = 531853513;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id5");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id5";
+	  numStars = 531853513;
 	}
 	else if (stringID[0]=='6')
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id6";
-		numStars = 203648450;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id6");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id6";
+	  numStars = 203648450;
 	}
 	else if (stringID[0]=='7')
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id7";
-		numStars = 1990817;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id7");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id7";
+	  numStars = 1990817;
 	}
 	else if (stringID[0]=='8')
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id8";
-		numStars = 3698075;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id8");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id8";
+	  numStars = 3698075;
 	}
 	else
 	{
-		fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id9";
-		numStars = 6507262;
+	  fileName = concat(catpath_Gaia2Bin,"IDSTSort/id9");
+	  //fileName = "/home/jkim/work/Gaia2Bin/IDSTSort/id9";
+	  numStars = 6507262;
 	}
 
 	FILE *idFile = fopen(fileName,"rb");
     // use binary search to find the id within the file
 	IDElement targetID = recurseID(0, numStars, gaiaID, idFile);
 	fclose(idFile);
+	free(fileName);
 	if (targetID.sourceID==0)
 	{
 		printf("ERROR: Gaia ID Query does not exist");
@@ -392,7 +420,7 @@ gaiastar getStarfromID(long gaiaID, const double *epoch)
 	}
 	char zone[4];
 	sprintf(zone,"%d",targetID.zone);
-	char * catpath = "/home/jkim/work/Gaia2Bin/sortedBin/z";
+	char * catpath = concat(catpath_Gaia2Bin,"sortedBin/z");
 	char *zoneFileName = concat(catpath,zone);
 
 	FILE *zoneFile = fopen(zoneFileName,"rb");
@@ -400,6 +428,8 @@ gaiastar getStarfromID(long gaiaID, const double *epoch)
 	gaiastar targetStar;
 	fread((void*)&targetStar,sizeof(gaiastar),1,zoneFile);
 	fclose(zoneFile);
+	free(zoneFileName);
+	free(catpath);
 
     // apply proper motion if necessary
     if ( epoch ) {

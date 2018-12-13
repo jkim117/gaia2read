@@ -10,7 +10,77 @@
 #include "gaia2ret.h"
 #include "utils.h"                                                                                                                                                                                                                            
 
+char catpath_Gaia2[MAX_LINE] = { '\0' };
+char catpath_Gaia2Bin[MAX_LINE] = { '\0' };
+char catpath_Gaia2Mass[MAX_LINE] = { '\0' };
+
+
 int STARSIZE = sizeof(gaiastar);
+
+
+// -------------------------------------------------------------------------- +
+
+void gaia2_setpath( const char* path )
+{
+    strncpy( catpath_Gaia2, path, MAX_LINE );
+    if ( catpath_Gaia2[strlen( catpath_Gaia2 ) - 1] != '/' ) {
+      strcat( catpath_Gaia2, "/" );
+    }
+
+    strcpy(catpath_Gaia2Bin,catpath_Gaia2);
+    strcat(catpath_Gaia2Bin,"Gaia2Bin/");
+
+    strcpy(catpath_Gaia2Mass,catpath_Gaia2);
+    strcat(catpath_Gaia2Mass,"Gaia2Mass/");
+
+    return;
+}
+
+// -------------------------------------------------------------------------- +
+
+void gaia2_getpath()
+{
+    if ( !*catpath_Gaia2 ) {
+        const char* defpath = "./";
+
+        const char* home = getenv( "HOME" );
+        if ( !home ) {
+            gaia2_setpath( defpath );
+	    return;
+        }
+
+        strcpy( catpath_Gaia2, home );
+        strcat( catpath_Gaia2, "/.gaia2readrc" );
+
+        FILE* rc = fopen( catpath_Gaia2, "r" );
+        if ( !rc ) {
+	  gaia2_setpath( defpath );
+	  return;
+        }
+
+        char* line = malloc( MAX_LINE * sizeof *line );
+        size_t len = 0;
+        while ( getline( &line, &len, rc ) > 0 ) {
+            char* comment = strchr( line, '#' );
+            if ( comment ) {
+                *comment = '\0';
+            }
+
+            char* path = ( char* )empty_string( line );
+            if ( path && *( path = trim_right( path ) ) ) {
+	      gaia2_setpath( path );
+	      break;
+            }
+        }
+
+        free( line );
+        fclose( rc );
+    }
+    
+    return;
+}
+
+// -------------------------------------------------------------------------- +
 
 // FINDING STARS IN GAIA DR2 BASED ON RA AND DEC RANGE:
 // Stars are grouped into 0.2 degree zones in zone files in the sortedBin folder. There are 900 zones.
@@ -155,7 +225,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
   if(raMax == 360.0)
     rMaxZone = 1439;
 
-  char* catpath = "/home/jkim/work/Gaia2Bin/sortedBin/z";
+  char* catpath = concat(catpath_Gaia2Bin, "sortedBin/z");
 
   for(int i = dMinZone; i < dMaxZone + 1; i++)
     {
@@ -165,8 +235,11 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
       char *fileName = concat(catpath, buffer);
 
       FILE *zFile = fopen(fileName,"rb");
-      if (zFile == NULL)
-        printf("error: could not open file\n");
+      if (zFile == NULL) {
+        fprintf(stderr,"error: could not open file %s\n",fileName);
+	exit(EXIT_FAILURE);
+      }
+      free(fileName);
 
       if(noRA0)
         {
@@ -267,6 +340,7 @@ int posCount(double raMin, double raMax, double decMin, double decMax, testfunc 
 
 
     }
+  free(catpath);
   return count;
 
 }
@@ -295,7 +369,7 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
   if(raMax == 360.0)
     rMaxZone = 1439;
 
-  char* catpath = "/home/jkim/work/Gaia2Bin/sortedBin/z";
+  char* catpath = concat(catpath_Gaia2Bin, "sortedBin/z");
 
     for(int i = dMinZone; i < dMaxZone + 1; i++)
     {
@@ -305,8 +379,11 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
       char *fileName = concat(catpath, buffer);
 
       FILE *zFile = fopen(fileName,"rb");
-      if (zFile == NULL)
-        printf("error: could not open file\n");
+      if (zFile == NULL) {
+        printf("error: could not open file %s\n",fileName);
+	exit(EXIT_FAILURE);
+      }
+      free(fileName);
 
         if(noRA0)
         {
@@ -409,6 +486,7 @@ int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc 
 
 
       }
+    free(catpath);
     return 0;
 
 

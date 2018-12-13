@@ -29,7 +29,7 @@
 //includes option flag to request based on input of gaia id, hat id, or 2 mass id
 
 enum {
-    //arg_catpath,
+    arg_catpath,
     arg_header,
     //arg_outphot,
     //arg_estphot,
@@ -52,8 +52,8 @@ myoptlong longoptions[] =
     { "circ",           no_argument,        'c'         },
     { "id",             required_argument,  'g'         },
     { "idtype",         required_argument,   arg_idtype },
-    //{ "cat",            required_argument,  arg_catpath },
-    //{ "catalog",        required_argument,  arg_catpath },//
+    { "cat",            required_argument,  arg_catpath },
+    { "catalog",        required_argument,  arg_catpath },
     { "header",         no_argument,        arg_header  },
     { "extra",          no_argument,        arg_extra   },
     { "idrequest",     required_argument,  arg_idrequest  },
@@ -97,6 +97,11 @@ int main(int argc, char** argv)
     const char* idFile            = NULL;
     int idcount = 0;//number of id stars added to list
     int opt;
+
+    if(argc == 1) {
+      usage();
+      exit(0);
+    }
 
     while ((opt = mygetopt(argc, argv, "r:d:p:s:cg:o:vh", longoptions)) != NO_MORE_OPTIONS)
     {
@@ -156,6 +161,10 @@ int main(int argc, char** argv)
 	        case 'g':           // --id
                 gID = myoptarg;
 	            break;
+
+                case arg_catpath:   // --cat, --catalog
+            		gaia2_setpath( myoptarg );
+            		break;
 
 	        case arg_idtype:    // --what type of ids are the input
                 if ( !astrio_parseID(myoptarg, &inputIDType, NULL))
@@ -219,6 +228,9 @@ int main(int argc, char** argv)
 	            usage();
         }
     }
+
+    /* Make sure the catalog path is set */
+    gaia2_getpath( );
 
     // collect ID information from arguments 'g' and arg_idfile
     if (gID != NULL)
@@ -343,6 +355,7 @@ int main(int argc, char** argv)
 	  sllist* altIDs = starListToIDs(stars,specify_idOut,count);
             gaiastar_printlist_alternateID(os, stars, print_extra, altIDs, specify_idOut,count);
         }
+
     }
     else {
         const double* pJD = epoch ? &JD : NULL;
@@ -402,16 +415,23 @@ local int toLongID(const char* id,IDType inputIDType,char* longID)
 {
   if(inputIDType==HAT)
     {
-      longID[strlen(id)-4]=id[0];
-      longID[strlen(id)-3]=id[1];
-      longID[strlen(id)-2]=id[2];
+      unsigned int i1;
+      unsigned int i2;
       unsigned int i;
-      for(i = 4; i < strlen(id);i++)
-	{
-	  longID[i-4]=id[i];
-	}
-      longID[i-1]='\0';
-      printf("%s %s\n",id,longID);
+      i = 0;
+      while(!(id[i] >= '0' && id[i] <= '9')) i++;
+      sscanf(&(id[i]),"%u-%u",&i1,&i2);
+      sprintf(longID,"%u%u",i2,i1);
+      //longID[strlen(id)-4]=id[0];
+      //longID[strlen(id)-3]=id[1];
+      //longID[strlen(id)-2]=id[2];
+      //unsigned int i;
+      //for(i = 4; i < strlen(id);i++)
+      //{
+      //  longID[i-4]=id[i];
+      //}
+      //longID[i-1]='\0';
+      //printf("%s %s\n",id,longID);
       return 0;
 
     }

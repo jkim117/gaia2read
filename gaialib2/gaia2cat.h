@@ -11,3 +11,7 @@ typedef bool (*testfunc) (
 int posQuery(double raMin, double raMax, double decMin, double decMax, testfunc tester,double ra,double dec, double frame_size, const double *epoch,gaiastar stars[]);
 
 int posCount(double raMin, double raMax, double decMin, double decMax, testfunc tester,double ra,double dec, double frame_size, const double *epoch);
+
+void gaia2_setpath( const char* path );
+
+void gaia2_getpath();
