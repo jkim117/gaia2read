@@ -3,6 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <errno.h>
+
 
 #include "astromath.h"
 #include "mmath.h"
@@ -211,61 +217,6 @@ int starPosSearch(double ra, double dec, bool circle, double frame_size, const d
               maglim, stars);
 }
 
-long recurseNewID(long start, long end, long ID, FILE *idFile, IDType intype, IDType outtype);
-
-sllist* starListToIDs(gaiastar stars[], IDType outID, int count)
-{
-  sllist *idList = NULL;
-  if(count <= 0) return idList;
-  char *gaiaFileName = concat(catpath_Gaia2Mass,"IDgaiaSort");
-  //FILE* gaiaFile = fopen("/home/jkim/work/Gaia2Mass/IDgaiaSort","rb");
-  FILE* gaiaFile = fopen(gaiaFileName,"rb");
-  if (gaiaFile==NULL) {
-    printf("ERROR: could not open file %s\n", gaiaFileName);
-    exit(EXIT_FAILURE);
-  }
-  for (int i = 0; i < count; i++) {
-    const gaiastar* star = &stars[i];
-    long gaiaID = star->source_id;
-
-    long other = recurseNewID(0,450646602,gaiaID,gaiaFile,GAIA,outID);
-
-    slappend(&idList,&other,sizeof(long));
-
-  }
-  free(gaiaFileName);
-  fclose(gaiaFile);
-  return idList;
-
-}
-
-// should work on all id types, including a gaia, in which it just returns otherIDt
-char* toGaiaID(const char* otherID, IDType inID, char* buffer)
-{
-  if (inID==GAIA)
-    return (char*)otherID;
-  FILE *sortedFile;
-  char *sortedFileName = NULL;
-  if (inID==TMASS)
-    sortedFileName = concat(catpath_Gaia2Mass,"IDtmassSort");
-  else
-    sortedFileName = concat(catpath_Gaia2Mass,"IDhatSort");
-  //sortedFile = fopen("/home/jkim/work/Gaia2Mass/IDtmassSort","rb");
-  //sortedFile = fopen("/home/jkim/work/Gaia2Mass/IDhatSort","rb");
-  sortedFile = fopen(sortedFileName,"rb");
-  if(sortedFile==NULL) {
-    printf("ERROR: could not open file %s\n",sortedFileName);
-    exit(EXIT_FAILURE);
-  }
-  long other = strtol(otherID,NULL,10);
-  long gaiaID = recurseNewID(0,450646602,other,sortedFile,inID,GAIA);
-  fclose(sortedFile);
-  if(sortedFileName != NULL)
-    free(sortedFileName);
-  sprintf(buffer,"%ld",gaiaID);
-  return buffer;
-}
-
 typedef struct
 {
   long gaia;
@@ -273,64 +224,127 @@ typedef struct
   long hat;
 }IDFull;
 
-// uses a binary search algorithm to find an ID within one of the sorted files
-long recurseNewID(long start, long end, long ID, FILE *idFile, IDType intype, IDType outtype)
+long findNewID(long start, long end, long ID, IDFull* idFile, IDType intype, IDType outtype);
+
+sllist* starListToIDs(gaiastar stars[], IDType outID, int count)
 {
+    sllist *idList = NULL;
+    if(count <= 0) return idList;
 
-  while(start <= end)
-    {
-      long mid = (end-start)/2+start;
-
-      long fileID;
-      if (intype==GAIA)
-        {
-	  fseek(idFile,mid*sizeof(IDFull),SEEK_SET);
-        }
-      else if(intype==TMASS)
-        {
-	  fseek(idFile,mid*sizeof(IDFull)+sizeof(long),SEEK_SET);
-        }
-      else//HAT
-        {
-	  fseek(idFile,mid*sizeof(IDFull)+2*sizeof(long),SEEK_SET);
-        }
-      fread(&fileID,sizeof(long),1,idFile);
-
-      long compare = ID-fileID;
-
-      if (compare < 0)
-        {
-	  end = mid-1;
-        }
-      else if(compare > 0)
-        {
-	  start = mid+1;
-        }
-      else
-        {
-
-	  if (outtype==GAIA)
-            {
-	      fseek(idFile,mid*sizeof(IDFull),SEEK_SET);
-            }
-	  else if(outtype==TMASS)
-            {
-	      fseek(idFile,mid*sizeof(IDFull)+sizeof(long),SEEK_SET);
-            }
-	  else//HAT
-            {
-	      fseek(idFile,mid*sizeof(IDFull)+2*sizeof(long),SEEK_SET);
-            }
-
-	  long targetID;
-	  fread(&targetID,sizeof(long),1,idFile);
-
-	  return targetID;
-        }
+    char *gaiaFileName = concat(catpath_Gaia2Mass,"IDgaiaSort");
+    int gaiaFileFd = open(gaiaFileName, O_RDONLY);
+    if (gaiaFileFd < 0) {
+        printf("ERROR: could not open file %s\n", gaiaFileName);
+        exit(EXIT_FAILURE);
     }
 
-    return 0;
+    // Get size of file
+    struct stat buf;
+    fstat(gaiaFileFd, &buf);
+    off_t size = buf.st_size;
 
+    // Read file using mmap
+    IDFull* gaiaFile = mmap(0, size, PROT_READ, MAP_SHARED, gaiaFileFd, 0);
+    if (gaiaFile == MAP_FAILED) {
+        printf("ERROR: errno %d\n", errno);
+        printf("ERROR: could not read file %s\n", gaiaFileName);
+        exit(EXIT_FAILURE);
+    }
+    long numIDs = size / sizeof(IDFull);
+
+    for (int i = 0; i < count; i++) {
+        const gaiastar* star = &stars[i];
+        long gaiaID = star->source_id;
+        long other = findNewID(0, numIDs, gaiaID, gaiaFile, GAIA, outID);
+        slappend(&idList,&other,sizeof(long));
+    }
+
+    int ret = munmap(gaiaFile, size);
+    if (ret < 0) {
+        printf("ERROR: could not unmap memory\n");
+        exit(EXIT_FAILURE);
+    }
+    close(gaiaFileFd);
+    return idList;
+}
+
+// should work on all id types, including a gaia, in which it just returns otherIDt
+char* toGaiaID(const char* otherID, IDType inID, char* buffer)
+{
+    if (inID==GAIA)
+        return (char*)otherID;
+
+    char *sortedFileName = NULL;
+    if (inID==TMASS)
+        sortedFileName = concat(catpath_Gaia2Mass,"IDtmassSort");
+    else
+        sortedFileName = concat(catpath_Gaia2Mass,"IDhatSort");
+    int sortedFileFd = open(sortedFileName, O_RDONLY);
+    if (sortedFileFd < 0) {
+        printf("ERROR: could not open file %s\n", sortedFileName);
+        exit(EXIT_FAILURE);
+    }
+
+    // Get size of file
+    struct stat buf;
+    fstat(sortedFileFd, &buf);
+    off_t size = buf.st_size;
+
+    // Read file using mmap
+    IDFull* sortedFile = mmap(0, size, PROT_READ, MAP_SHARED, sortedFileFd, 0);
+    if (sortedFile == MAP_FAILED) {
+        printf("ERROR: could not read file %s\n", sortedFileName);
+        exit(EXIT_FAILURE);
+    }
+    long numIDs = size / sizeof(IDFull);
+
+    long other = strtol(otherID, NULL, 10);
+    long gaiaID = findNewID(0, numIDs, other, sortedFile, inID, GAIA);
+
+    int ret = munmap(sortedFile, size);
+    if (ret < 0) {
+        printf("ERROR: could not unmap memory\n");
+        exit(EXIT_FAILURE);
+    }
+    close(sortedFileFd);
+
+    sprintf(buffer,"%ld",gaiaID);
+    return buffer;
+}
+
+
+// uses a binary search algorithm to find an ID within one of the sorted files
+long findNewID(long start, long end, long ID, IDFull* idFile, IDType intype, IDType outtype)
+{
+    while(start <= end)
+    {
+        long mid = (end-start)/2+start;
+        IDFull current = idFile[mid];
+
+        long currentID;
+        if (intype==GAIA)
+            currentID = current.gaia;
+        else if(intype==TMASS)
+            currentID = current.tmass;
+        else //HAT
+            currentID = current.hat;
+
+        long compare = ID - currentID;
+
+        if (compare < 0)
+            end = mid - 1;
+        else if (compare > 0)
+            start = mid + 1;
+        else {
+            if (outtype == GAIA)
+                return current.gaia;
+            else if (outtype == TMASS)
+                return current.tmass;
+            else
+                return current.hat;
+        }
+    }
+    return 0;
 }
 
 
