@@ -238,6 +238,7 @@ int main(int argc, char** argv)
                     if ( !myoptarg && cent_ra_set && cent_dec_set ) {
                         // Use search center for xi-eta coordinates
                         xieta_center = &center;
+                        print_xieta = true;
                     }
                     else if ( myoptarg ) {
                         char* myoptargcopy = strdup(myoptarg);
@@ -745,6 +746,11 @@ void help()
 " --idfile <path>       : read IDs (see option -g) from file",
 " --precess <equinox>   : apply correction for precession for a given equinox",
 " --pm <epoch>          : apply correction for proper motions. Epoch is in years",
+" --xieta-coords <ra>,<dec> : output xi/eta coordinates centered at given sky position, defaulting to search center",
+" --mG|-m <G_min>       : bright G magnitude cutoff",
+" --MG|-M <G_max>       : faint G magnitude cutoff",
+" --mf <f_min>          : minimum magnitude in band f, where f is 'G', 'R', or 'B'",
+" --Mf <f_max>          : maximum magnitude in band f, where f is 'G', 'R', or 'B'",
 " --out|-o <file>       : output file",
 " --cmdline             : prints command line first",
 " --version|-v          : prints out version",

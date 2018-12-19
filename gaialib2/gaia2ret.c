@@ -513,17 +513,17 @@ bool test_star(gaiastar* star, double centRA, double centDec, double half_size, 
         return false;
     // Not all Gaia stars have RP and BP magnitudes in GaiaDR2, so check for this
     // n/a values were stored as 3.55: see DataPreparation/gaia2writebin.c
-    if (maglim -> minBpmag && fabs(3.55 - star->phot_bp_mean_mag)<1e-7
-            && star->phot_bp_mean_mag < *maglim->minBpmag)
+    if (maglim -> minBpmag && (fabs(3.55 - star->phot_bp_mean_mag)<1e-7
+            || star->phot_bp_mean_mag < *maglim->minBpmag))
         return false;
-    if (maglim -> maxBpmag && fabs(3.55 - star->phot_bp_mean_mag)<1e-7
-            && star->phot_bp_mean_mag > *maglim->maxBpmag)
+    if (maglim -> maxBpmag && (fabs(3.55 - star->phot_bp_mean_mag)<1e-7
+            || star->phot_bp_mean_mag > *maglim->maxBpmag))
         return false;
-    if (maglim -> minRpmag && fabs(3.55 - star->phot_rp_mean_mag)<1e-7
-            && star->phot_rp_mean_mag < *maglim->minRpmag)
+    if (maglim -> minRpmag && (fabs(3.55 - star->phot_rp_mean_mag)<1e-7
+            || star->phot_rp_mean_mag < *maglim->minRpmag))
         return false;
-    if (maglim -> maxRpmag && fabs(3.55 - star->phot_rp_mean_mag)<1e-7
-            && star->phot_rp_mean_mag > *maglim->maxRpmag)
+    if (maglim -> maxRpmag && (fabs(3.55 - star->phot_rp_mean_mag)<1e-7
+            || star->phot_rp_mean_mag > *maglim->maxRpmag))
         return false;
   }
 
@@ -562,6 +562,20 @@ bool test_starcirc(gaiastar* star,double centRA,double centDec,double radius, co
     if ( maglim->minGmag && star->phot_g_mean_mag < *maglim->minGmag)
         return false;
     if ( maglim->maxGmag && star->phot_g_mean_mag > *maglim->maxGmag)
+        return false;
+    // Not all Gaia stars have RP and BP magnitudes in GaiaDR2, so check for this
+    // n/a values were stored as 3.55: see DataPreparation/gaia2writebin.c
+    if (maglim -> minBpmag && (fabs(3.55 - star->phot_bp_mean_mag)<1e-7
+            || star->phot_bp_mean_mag < *maglim->minBpmag))
+        return false;
+    if (maglim -> maxBpmag && (fabs(3.55 - star->phot_bp_mean_mag)<1e-7
+            || star->phot_bp_mean_mag > *maglim->maxBpmag))
+        return false;
+    if (maglim -> minRpmag && (fabs(3.55 - star->phot_rp_mean_mag)<1e-7
+            || star->phot_rp_mean_mag < *maglim->minRpmag))
+        return false;
+    if (maglim -> maxRpmag && (fabs(3.55 - star->phot_rp_mean_mag)<1e-7
+            || star->phot_rp_mean_mag > *maglim->maxRpmag))
         return false;
   }
   // apply pm
