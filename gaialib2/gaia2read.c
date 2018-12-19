@@ -39,6 +39,7 @@ enum {
     arg_idfile,
     arg_precess,
     arg_pm,
+    arg_xieta,
     arg_rmin,
     arg_rmax,
     arg_bmin,
@@ -64,6 +65,7 @@ myoptlong longoptions[] =
     { "idfile",         required_argument,  arg_idfile  },
     { "precess",        required_argument,  arg_precess },
     { "pm",             optional_argument,  arg_pm      },
+    { "xieta-coords",   optional_argument,  arg_xieta   },
     { "mG",             optional_argument,  'm'         },
     { "MG",             optional_argument,  'M'         },
     { "mR",             optional_argument,  arg_rmin    },
@@ -102,6 +104,8 @@ int main(int argc, char** argv)
     double JDequinox        = 0;
     bool epoch              = false;
     double JD               = 0;
+    skypos* xieta_center    = NULL;
+    bool print_xieta        = false;
     bool print_cmdline      = false;
     const char* gID         = NULL;
     const char* idFile      = NULL;
@@ -228,6 +232,35 @@ int main(int argc, char** argv)
 	                }
 	            }
 	            break;
+
+            case arg_xieta:     // --xieta-coords
+                {
+                    if ( !myoptarg && cent_ra_set && cent_dec_set ) {
+                        // Use search center for xi-eta coordinates
+                        xieta_center = &center;
+                    }
+                    else if ( myoptarg ) {
+                        char* myoptargcopy = strdup(myoptarg);
+                        // Read in coordinates for frame-projection
+                        char* pch = strtok(myoptargcopy, ",");
+                        double xieta_ra = strtof(pch, NULL);
+                        pch = strtok(NULL, ",");
+                        if (pch == NULL) {
+                            err_print_msg("Need to provide both RA and DEC for --xieta-coords");
+                        }
+                        else {
+                            double xieta_dec = strtof(pch, NULL);
+                            skypos xietapos = { xieta_ra, xieta_dec };
+                            xieta_center = &xietapos;
+                            print_xieta = true;
+                        }
+                        free(myoptargcopy);
+                    }
+                    else {
+                        err_print_msg("Incorrect arguments provided to --xieta-coords");
+                    }
+                }
+                break;
 
             case 'm':           // --mG
                 {
@@ -419,23 +452,23 @@ int main(int argc, char** argv)
     if ( cent_ra_set ) {
       int count;
       if ( !is_circular ) {
-	// read square count
-	count = starPosCount(center.RA, center.Dec, false, size, pJD, pmaglim);
+          // read square count
+          count = starPosCount(center.RA, center.Dec, false, size, pJD, pmaglim);
       }
       else {
-	// read circle count
-	count = starPosCount(center.RA, center.Dec, true, size, pJD, pmaglim);
+          // read circle count
+          count = starPosCount(center.RA, center.Dec, true, size, pJD, pmaglim);
       }
       gaiastar *stars;
       stars=malloc(count*sizeof(gaiastar));
 
         if ( !is_circular ) {
             // read square
-	  starPosSearch(center.RA, center.Dec, false, size, pJD, pmaglim, stars);
+            starPosSearch(center.RA, center.Dec, false, size, pJD, pmaglim, stars);
         }
         else {
             // read circle
-	  starPosSearch(center.RA, center.Dec, true, size, pJD, pmaglim, stars);
+            starPosSearch(center.RA, center.Dec, true, size, pJD, pmaglim, stars);
         }
 
         if (count==0 ) {
@@ -450,39 +483,35 @@ int main(int argc, char** argv)
             }
         }
 
-        if ( equinox ) {
-	  gaia2_precesslist( stars, JDequinox,count );
-        }
+        if ( equinox )
+            gaia2_precesslist( stars, JDequinox,count );
 
-        if ( !os ) {
+        if ( !os )
             os = stdout;
-        }
 
-        if ( print_header ) {
-            gaiastar_printheader( os, print_extra, specify_idOut);
-        }
+        if ( print_header )
+            gaiastar_printheader( os, print_extra, specify_idOut, print_xieta);
 
         if ( print_cmdline ) {
             fputs( "# ", os );
             myargs_print_cmdline( os, argc, argv );
         }
 
-        if(specify_idOut==GAIA)
-	  gaiastar_printlist(os, stars,print_extra,count);
-        else
-        {
-	  sllist* altIDs = starListToIDs(stars,specify_idOut,count);
-            gaiastar_printlist_alternateID(os, stars, print_extra, altIDs, specify_idOut,count);
+        if (specify_idOut==GAIA)
+            gaiastar_printlist(os, stars, count, print_extra, xieta_center);
+        else {
+            sllist* altIDs = starListToIDs(stars,specify_idOut,count);
+            gaiastar_printlist_alternateID(os, stars, count, print_extra, altIDs, specify_idOut, xieta_center);
         }
 
     }
     else {
         // get stars based on their IDs
         gaiastar *stars;
-	stars = malloc(idcount*sizeof(gaiastar));
-	  starsfromID(ids, pJD,stars);
+        stars = malloc(idcount*sizeof(gaiastar));
+	    starsfromID(ids, pJD,stars);
 
-	  if (idcount==0) {
+	    if (idcount==0) {
             err_print_msg( "no star found" );
             exit( EXIT_FAILURE );
         }
@@ -494,36 +523,30 @@ int main(int argc, char** argv)
             }
         }
 
-        if ( equinox ) {
-	  gaia2_precesslist( stars, JDequinox ,idcount);
-        }
+        if ( equinox )
+            gaia2_precesslist( stars, JDequinox ,idcount);
 
-        if ( !os ) {
+        if ( !os )
             os = stdout;
-        }
 
-        if ( print_header ) {
-	  gaiastar_printheader( os, print_extra, specify_idOut);
-        }
+        if ( print_header )
+            gaiastar_printheader( os, print_extra, specify_idOut, print_xieta);
 
         if ( print_cmdline ) {
             fputs( "# ", os );
             myargs_print_cmdline( os, argc, argv );
         }
 
-        if(specify_idOut==GAIA)
-	  gaiastar_printlist(os, stars,print_extra,idcount);
-        else
-        {
-	  sllist* altIDs = starListToIDs(stars,specify_idOut,idcount);
-	    gaiastar_printlist_alternateID(os, stars, print_extra, altIDs, specify_idOut,idcount);
+        if ( specify_idOut==GAIA )
+            gaiastar_printlist(os, stars, idcount, print_extra, xieta_center);
+        else {
+            sllist* altIDs = starListToIDs(stars,specify_idOut,idcount);
+            gaiastar_printlist_alternateID(os, stars, idcount, print_extra, altIDs, specify_idOut, xieta_center);
         }
     }
 
-    if ( outfile ) {
+    if ( outfile )
         fclose( os );
-    }
-
 
 	exit(EXIT_SUCCESS);
 }
@@ -679,6 +702,7 @@ void usage()
 " --idfile <path>       : read IDs (see option -g) from file",
 " --precess <equinox>   : apply correction for precession for a given equinox",
 " --pm <epoch>          : apply correction for proper motions. Epoch is in years",
+" --xieta-coords <ra>,<dec> : output xi/eta coordinates centered at given sky position, defaulting to search center",
 " --mG|-m <G_min>       : bright G magnitude cutoff",
 " --MG|-M <G_max>       : faint G magnitude cutoff",
 " --mf <f_min>          : minimum magnitude in band f, where f is 'G', 'R', or 'B'",
