@@ -7,7 +7,7 @@
 
 typedef struct
 {
-  // This data is the default show                                                                                                                                                                                                                                              
+  // This data is the default show
   long source_id;
   double ref_epoch;
   double ra;
@@ -23,9 +23,9 @@ typedef struct
   double astrometric_excess_noise;
   double astrometric_excess_noise_sig;
   bool astrometric_primary_flag;
-  //109 bytes                                                                                                                                                                                                                                                                   
+  //109 bytes
 
-  // This data below is optional                                                                                                                                                                                                                                                
+  // This data below is optional
   int phot_g_n_obs;
   double phot_g_mean_flux;
   double phot_g_mean_flux_error;
